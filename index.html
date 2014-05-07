@@ -1,0 +1,426 @@
+<html>
+<head>
+<title>My Butterfly</title>
+<style>
+canvas{position:absolute;left:0;top:0;background-color:#36f}
+body {
+	margin: 0px;
+	padding: 0px;
+	overflow: hidden;
+    /*background-size: 2420px 1200px;*/
+}
+
+.body {
+	background: url('img/body.png');
+	width: 203px;
+	height: 177px;
+}
+
+.wing {
+	background: url('img/winga.png');
+	width: 191px;
+	height: 343px;
+}
+
+.error {
+	background-color: red;
+	color: black;
+	text-align: center;
+	font-size: 2em;
+	padding: 50px;
+	margin-top: 20%;
+}
+
+.error a {
+	color: black;
+}
+</style>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-24433968-8', 'iitk.ac.in');
+  ga('send', 'pageview');
+
+</script>
+<script type="text/javascript" src="js/RequestAnimationFrame.js"></script>
+<script type="text/javascript" src="js/Stats.js"></script>
+<script type="text/javascript" src="js/Sprite3DF.js"></script>
+<script type="text/javascript">
+    var stage,
+        container,
+        butterflies,
+        bgs,
+        bgp = 0,
+        n = 10,
+        stats,
+        mDown = false,
+        lastTime,
+        mx, my, mID,
+        autorotate = true,
+        t = 0,
+        i;
+
+    addEventListener("load", init, false);
+
+    function init() {
+
+        if (Sprite3D.isSupported()) {
+            stage = Sprite3D.createCenteredContainer();
+
+            container = stage.addChild(
+                new Sprite3D()
+                .setPosition(0, 0, -1600)
+                .setRotateFirst(false)
+                .update()
+            );
+
+            butterflies = [];
+            var b;
+
+            for (i = 0; i < n; i++) {
+                b = new Butterfly();
+                container.addChild(b.body);
+                b.body
+                    .setPosition(Math.random() * 2000 - 1000, Math.random() * 1200 - 600, Math.random() * 2000 - 1000)
+                    .setRotation(Math.random() * 28 - 14, Math.random() * 360, Math.random() * 16 - 8)
+                    .update();
+                butterflies.push(b);
+            }
+
+            bgs = document.body.style;
+
+            var p = navigator.platform;
+
+            autorotate = !(p == "iPad" || p == "iPod" || p == "iPhone");
+
+            addEventListener("mousedown", onMouseDown);
+            addEventListener("mousemove", onMouseMove);
+            addEventListener("mouseup", onMouseUp);
+
+            document.addEventListener("touchstart", onTouchStart);
+            document.addEventListener("touchmove", onTouchMove);
+            document.addEventListener("touchend", onTouchEnd);
+
+            lastTime = new Date().getTime();
+            animate();
+        } else {
+            var d = document.createElement("div");
+            d.className = "error";
+            d.innerHTML = 'Ooooh. I\'m so sorry...<br/><br/>Your browser does not support 3D CSS transforms.<br/>You should try to view this page with <a href="http://www.google.com/chrome/">Chrome</a> or <a href="http://www.apple.com/safari/">Safari</a>.';
+            document.body.appendChild(d);
+        }
+    }
+
+    /* ******* TOUCH ********* */
+
+    function onTouchStart(event) {
+        if (!mDown) {
+            var t = event.changedTouches[0];
+            mDown = true;
+            mID = t.identifier;
+            mx = t.pageX;
+            my = t.pageY;
+            event.preventDefault();
+        }
+    }
+
+    function onTouchMove(event) {
+        if (mDown) {
+            var t = event.changedTouches[0];
+            if (t.identifier == mID) {
+                var nx = t.pageX,
+                    ny = t.pageY;
+                rotateContainer(nx - mx, ny - my);
+                mx = nx;
+                my = ny;
+                event.preventDefault();
+            }
+        }
+    }
+
+    function onTouchEnd(event) {
+        if (mDown) {
+            var t = event.changedTouches[0];
+            if (t.identifier == mID) {
+                mDown = false;
+                event.preventDefault();
+            }
+        }
+    }
+
+    /* ******* MOUSE ********* */
+
+    function onMouseDown(event) {
+        mDown = true;
+        mx = event.pageX;
+        my = event.pageY;
+        event.preventDefault();
+    }
+
+    function onMouseMove(event) {
+        if (mDown) {
+            var nx = event.pageX,
+                ny = event.pageY;
+            rotateContainer(nx - mx, ny - my);
+            mx = nx;
+            my = ny;
+            event.preventDefault();
+        }
+
+    }
+
+    function onMouseUp(event) {
+        mDown = false;
+        event.preventDefault();
+    }
+
+
+    /* ******* BUTTERFLIES ANIMATION ********* */
+
+    function animate() {
+        requestAnimationFrame(animate);
+        update();
+    }
+
+    function update() {
+        var newTime = new Date().getTime(),
+            delta = newTime - lastTime;
+        lastTime = newTime;
+
+        t += 0.028 * delta;
+        for (i = 0; i < n; i++) {
+            butterflies[i].flap(t);
+        }
+
+        if (autorotate && !mDown) rotateContainer(1);
+        //	stats.update();
+    }
+
+    function rotateContainer(v, w) {
+        // .moveZ( -w )
+        container.rotate(0, v * .2, 0).update();
+        bgp -= v;
+        bgs.backgroundPosition = bgp + "px bottom";
+    }
+
+    /* ******* BUTTERFLIES CLASS ********* */
+
+    function Butterfly() {
+        var lwing, rwing;
+
+        this.body = new Sprite3D()
+            .setClassName("body")
+            .setRotateFirst(false)
+            .setRegistrationPoint(101, 88, 0)
+            .update();
+
+        this.lwing = this.body.addChild(
+            new Sprite3D()
+            .setClassName('wing')
+            .setPosition(100, -65, 0)
+            .setTransformString("_p _rz _ry")
+            .setTransformOrigin("0px", "130px")
+            .setRotation(0, 40, -60)
+            .update()
+        );
+
+        this.rwing = this.body.addChild(
+            new Sprite3D()
+            .setClassName('wing')
+            .setPosition(100, -65, 0)
+            .setTransformString("_p _rz _ry")
+            .setTransformOrigin("0px", "130px")
+            .setRotation(0, -40, -60)
+            .update()
+        );
+
+        this.flapOffset = Math.random() * Math.PI;
+    }
+
+    Butterfly.prototype.body = null;
+    Butterfly.prototype.lwing = null;
+    Butterfly.prototype.rwing = null;
+    Butterfly.prototype.flapOffset = null;
+    Butterfly.prototype.flap = function (t) {
+        var a = (Math.cos(this.flapOffset + t) + 1) * 65 + 10;
+
+        this.lwing.setRotationY(a).update();
+        this.rwing.setRotationY(-a).update();
+
+        var r = 4,
+            t = 8;
+
+        this.body
+            .move(Math.random() * t - r, Math.random() * t - r, Math.random() * t - r)
+            .rotateY(Math.random() * t - r)
+            .update();
+    }
+</script>
+<script type="text/javascript" src="js/three-53.js"></script>
+</head>
+<body>
+<script type="text/javascript">
+var scene = new THREE.Scene();
+var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+var renderer = new THREE.WebGLRenderer();
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+var magicnumber = 500;
+var square = Math.round(Math.sqrt(magicnumber));
+var group = new THREE.Object3D;
+var yrot = 0;
+var skymagic = 100;
+var skygeo = new THREE.PlaneGeometry(skymagic * 20, skymagic * 10, 1, 1);
+var skytex = THREE.ImageUtils.loadTexture("img/clouds-tile.png");
+skytex.wrapT = THREE.RepeatWrapping;
+var skymat = new THREE.MeshBasicMaterial({
+    map: skytex
+});
+skymat.side = THREE.DoubleSide;
+skymat.needsUpdate = true;
+var sky = new THREE.Mesh(skygeo, skymat);
+sky.dynamic = true;
+sky.position.x = 0;
+sky.position.y = 2 * skymagic / 3;
+sky.position.z = skymagic * 3;
+sky.rotation.y = Math.PI;
+sky.rotation.x = -Math.PI / 4;
+scene.add(sky);
+var ground = new THREE.PlaneGeometry(magicnumber, magicnumber, square, square);
+var groundtex = THREE.ImageUtils.loadTexture("img/grass.png");
+groundtex.magFilter = THREE.NearestFilter;
+groundtex.minFilter = THREE.LinearMipMapLinearFilter;
+groundtex.wrapS = groundtex.wrapT = THREE.RepeatWrapping;
+groundtex.repeat.set(square, square);
+var groundmat = new THREE.MeshLambertMaterial({
+    map: groundtex
+});
+groundmat.side = THREE.DoubleSide;
+var plane = new THREE.Mesh(ground, groundmat);
+plane.rotation.x = -Math.PI / 2;
+var verts = ground.vertices;
+ground.dynamic = true;
+for (var j = 0; j < verts.length; j++) {
+    verts[j].z = Math.random() * 20 - 10;
+    ground.verticesNeedUpdate = true;
+}
+group.add(plane);
+var texturea = THREE.ImageUtils.loadTexture("img/flower0.png");
+var textureb = THREE.ImageUtils.loadTexture("img/flower1.png");
+var texturec = THREE.ImageUtils.loadTexture("img/flower2.png");
+var textured = THREE.ImageUtils.loadTexture("img/flower3.png");
+var texturee = THREE.ImageUtils.loadTexture("img/flower4.png");
+for (var i = 0; i < magicnumber; i++) {
+    var texture;
+    switch (Math.round(Math.random() * 4)) {
+    case 0:
+        texture = texturea;
+        break;
+    case 1:
+        texture = textureb;
+        break;
+    case 2:
+        texture = texturec;
+        break;
+    case 3:
+        texture = textured;
+        break;
+    case 4:
+        texture = texturee;
+        break;
+    }
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.LinearMipMapLinearFilter;
+    var particle = new THREE.Sprite({
+        map: texture,
+        useScreenCoordinates: false,
+        color: 0xffffff
+    });
+    particle.position.x = verts[i].x;
+    particle.position.y = verts[i].z + 10;
+    particle.position.z = verts[i].y;
+    group.add(particle);
+}
+scene.add(group);
+camera.position.z = -magicnumber / 2;
+camera.position.y = 65;
+var origin = new THREE.Vector3(0, 0, 0);
+camera.lookAt(origin);
+var pointLight = new THREE.PointLight(0xFFFFFF);
+scene.add(pointLight);
+pointLight.position.y = 100;
+pointLight.position.x = camera.position.x;
+pointLight.position.z = camera.position.z;
+
+function render() {
+    requestAnimationFrame(render);
+    renderer.render(scene, camera);
+    group.rotation.y += yrot;
+    skytex.offset.y -= .001;
+}
+render();
+renderer.domElement.addEventListener("mousemove", function (evt) {
+    if (evt.pageX - renderer.domElement.offsetLeft < renderer.domElement.width / 4) {
+        yrot = -.01;
+    } else if (evt.pageX - renderer.domElement.offsetLeft > 3 * renderer.domElement.width / 4) {
+        yrot = .01;
+    } else {
+        yrot = 0;
+    }
+    camera.lookAt(origin);
+}, false);
+document.addEventListener("mouseout", function (evt) {
+    yrot = 0;
+    camera.lookAt(origin);
+}, false);
+window.addEventListener("resize", function () {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+<script type="text/javascript">
+
+
+flag=1
+function f1()
+{
+	window.location = "poem.html";
+}
+function f()
+{
+	if(flag==1)
+		{
+			Bn.style.top=110
+			Bn.style.left=600
+			flag=2
+		}
+	else if(flag==2)
+		{
+			Bn.style.top=70
+			Bn.style.left=50
+			flag=3
+		}
+	else if(flag==3)
+		{
+			Bn.style.top=235
+			Bn.style.left=360
+			flag=1
+		}
+}
+
+</script>
+<div id="overlay" style="position:absolute; left:100px; top:10px; width:auto; height:210px;z-index:100;">
+<h2>My Buttterfly,<br><br>Will you be my valentine?</h2>
+<div id="By" style="position:absolute;left:70px;top:150px;"><input type="button" value=" YES " onclick="f1()" /></div>
+<div ID="Bn" style="position:absolute;left:150px;top:150px;"><input type="button" value="  NO  " onmouseover="f()" /></div>
+</div>
+<audio autoplay>
+  <source src="music.ogg" type="audio/ogg">
+  <source src="music.mp3" type="audio/mpeg">
+</audio> 
+</body>
+</html>

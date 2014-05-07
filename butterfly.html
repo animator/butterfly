@@ -1,0 +1,281 @@
+
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name='HandheldFriendly' content='True' />
+		<meta name='viewport' content='width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=0' />
+		<title>Butterflies</title>
+
+
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black">
+		
+<!-- =========================================================== -->		
+<!-- CSS SECTION =============================================== -->
+<!-- =========================================================== -->
+
+		<style>
+		
+html, body { height: 100%; }
+
+body {
+	margin: 0px;
+	padding: 0px;
+	overflow: hidden;
+    background-size: 2420px 1200px;
+}
+
+.body {
+	background: url('img/body.png');
+	width: 203px;
+	height: 177px;
+}
+
+.wing {
+	background: url('img/winga.png');
+	width: 191px;
+	height: 343px;
+}
+
+.error {
+	background-color: red;
+	color: black;
+	text-align: center;
+	font-size: 2em;
+	padding: 50px;
+	margin-top: 20%;
+}
+
+.error a {
+	color: black;
+}
+			
+		</style>
+
+		<script type="text/javascript" src="js/RequestAnimationFrame.js"></script>
+		<script type="text/javascript" src="js/Stats.js"></script>
+		<script type="text/javascript" src="js/Sprite3DF.js"></script>
+		<script type="text/javascript">
+
+		var stage,
+			container,
+			butterflies,
+			bgs,
+			bgp = 0,
+			n = 10,
+			stats,
+			mDown = false,
+			lastTime,
+			mx, my, mID,
+			autorotate = true,
+			t = 0, i;
+
+		addEventListener( "load", init, false );
+
+		function init() {
+			
+			if ( Sprite3D.isSupported() )
+			{
+				stage = Sprite3D.createCenteredContainer();
+
+				container = stage.addChild( 
+					new Sprite3D()
+						.setPosition( 0, 0, -1600 )
+						.setRotateFirst(false)
+						.update() 
+				);
+
+				butterflies = [];
+				var b;
+
+				for( i=0; i<n; i++ ) {
+					b = new Butterfly();
+					container.addChild( b.body );
+					b.body
+						.setPosition( Math.random() * 2000 - 1000, Math.random() * 1200 - 600, Math.random() * 2000 - 1000 )
+						.setRotation( Math.random() * 28 - 14, Math.random() * 360, Math.random() * 16 - 8 )
+						.update();
+					butterflies.push( b );
+				}
+
+				bgs = document.body.style;
+
+				var p = navigator.platform;
+
+				autorotate = !( p == "iPad" || p == "iPod" || p == "iPhone" );
+
+				addEventListener( "mousedown", onMouseDown );
+				addEventListener( "mousemove", onMouseMove );
+				addEventListener( "mouseup", onMouseUp );
+
+				document.addEventListener( "touchstart", onTouchStart );
+				document.addEventListener( "touchmove", onTouchMove );
+				document.addEventListener( "touchend", onTouchEnd );
+
+				lastTime = new Date().getTime();
+				animate();
+			}
+			else
+			{
+				var d = document.createElement("div");
+				d.className = "error";
+				d.innerHTML = 'Ooooh. I\'m so sorry...<br/><br/>Your browser does not support 3D CSS transforms.<br/>You should try to view this page with <a href="http://www.google.com/chrome/">Chrome</a> or <a href="http://www.apple.com/safari/">Safari</a>.';
+				document.body.appendChild(d);
+			}
+		}	
+
+		/* ******* TOUCH ********* */
+
+		function onTouchStart( event ) {
+			if ( !mDown )
+			{
+				var t = event.changedTouches[0];
+				mDown = true;
+				mID = t.identifier;
+				mx = t.pageX;
+				my = t.pageY;
+				event.preventDefault();
+			}
+		}
+
+		function onTouchMove( event ) {
+			if ( mDown )
+			{
+				var t = event.changedTouches[0];
+				if ( t.identifier == mID ) 
+				{
+					var nx = t.pageX, ny = t.pageY;
+					rotateContainer( nx - mx, ny - my );
+					mx = nx;
+					my = ny;
+					event.preventDefault();
+				}
+			}	
+		}
+
+		function onTouchEnd( event ) {
+			if ( mDown )
+			{
+				var t = event.changedTouches[0];
+				if ( t.identifier == mID ) 
+				{
+					mDown = false;
+					event.preventDefault();
+				}
+			}
+		}
+
+		/* ******* MOUSE ********* */
+
+		function onMouseDown( event ) {
+			mDown = true;
+			mx = event.pageX;
+			my = event.pageY;
+			event.preventDefault();
+		}
+
+		function onMouseMove( event ) {
+			if ( mDown )
+			{
+				var nx = event.pageX, ny = event.pageY;
+				rotateContainer( nx - mx, ny - my );
+				mx = nx;
+				my = ny;
+				event.preventDefault();
+			}
+
+		}
+
+		function onMouseUp( event ) {
+			mDown = false;
+			event.preventDefault();
+		}
+
+
+		/* ******* BUTTERFLIES ANIMATION ********* */
+
+		function animate() {
+			requestAnimationFrame( animate );
+			update();
+		}
+
+		function update() {
+			var newTime = new Date().getTime(),
+				delta = newTime - lastTime;
+			lastTime = newTime;
+
+			t += 0.028 * delta;
+			for( i=0; i<n; i++ ) { 
+				butterflies[i].flap(t); 
+			}
+
+			if ( autorotate && !mDown ) rotateContainer(1);
+		//	stats.update();
+		}
+
+		function rotateContainer( v, w ) {
+			// .moveZ( -w )
+			container.rotate( 0, v *.2, 0 ).update();
+			bgp -= v;
+			bgs.backgroundPosition = bgp + "px bottom";
+		}
+
+		/* ******* BUTTERFLIES CLASS ********* */
+
+		function Butterfly() {
+			var lwing, rwing;
+
+			this.body = new Sprite3D()
+					.setClassName("body")
+					.setRotateFirst(false)
+					.setRegistrationPoint( 101, 88, 0 )
+					.update();
+
+			this.lwing = this.body.addChild( 
+				new Sprite3D()
+					.setClassName('wing')
+					.setPosition( 100, -65, 0 )
+					.setTransformString("_p _rz _ry")
+					.setTransformOrigin( "0px", "130px" )
+					.setRotation( 0, 40, -60 )
+					.update()
+			);
+
+			this.rwing = this.body.addChild( 
+				new Sprite3D()
+					.setClassName('wing')
+					.setPosition( 100, -65, 0 )
+					.setTransformString("_p _rz _ry")
+					.setTransformOrigin( "0px", "130px" )
+					.setRotation( 0, -40, -60 )
+					.update()
+			);
+
+			this.flapOffset = Math.random() * Math.PI;
+		}
+
+		Butterfly.prototype.body = null;
+		Butterfly.prototype.lwing = null;
+		Butterfly.prototype.rwing = null;
+		Butterfly.prototype.flapOffset = null;
+		Butterfly.prototype.flap = function(t) {
+			var a = ( Math.cos(this.flapOffset+t) + 1 ) * 65 + 10;
+
+			this.lwing.setRotationY( a ).update();
+			this.rwing.setRotationY( -a ).update();
+
+			var r = 4,t = 8;
+
+			this.body
+				.move( Math.random() * t - r, Math.random() * t - r, Math.random() * t - r )
+				.rotateY( Math.random() * t - r )
+				.update();
+		}
+
+		</script>
+
+	</head>
+	<body>
+	</body>
+</html>
